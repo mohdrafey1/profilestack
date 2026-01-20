@@ -1,44 +1,72 @@
 import { Router } from "express";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth.middleware";
 
 const router = Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Register
-router.post("/register", async (req, res) => {
+// Google Login
+router.post("/google", async (req, res) => {
     try {
-        const { email, password, name } = req.body;
+        const { credential } = req.body;
 
-        // Check if user exists
-        const existingUser = await prisma.user.findUnique({ where: { email } });
-        if (existingUser) {
+        if (!credential) {
             return res
                 .status(400)
-                .json({ success: false, message: "Email already registered" });
+                .json({ success: false, message: "No credential provided" });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 12);
-
-        // Create user with empty profile
-        const user = await prisma.user.create({
-            data: {
-                email,
-                password: hashedPassword,
-                name,
-                profile: {
-                    create: {
-                        firstName: name.split(" ")[0],
-                        lastName: name.split(" ").slice(1).join(" "),
-                        email,
-                    },
-                },
-            },
+        // Verify Google token
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID,
         });
 
-        // Generate token
+        const payload = ticket.getPayload();
+        if (!payload || !payload.email) {
+            return res
+                .status(400)
+                .json({ success: false, message: "Invalid token" });
+        }
+
+        const { email, name, picture, sub: googleId } = payload;
+
+        // Find or create user
+        let user = await prisma.user.findUnique({ where: { email } });
+
+        if (!user) {
+            // Create new user with profile
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    name: name || "User",
+                    googleId,
+                    picture,
+                    profile: {
+                        create: {
+                            firstName: name?.split(" ")[0] || "",
+                            lastName: name?.split(" ").slice(1).join(" ") || "",
+                            email,
+                            profilePic: picture,
+                        },
+                    },
+                },
+            });
+        } else {
+            // Update existing user
+            user = await prisma.user.update({
+                where: { email },
+                data: {
+                    googleId,
+                    picture,
+                    name: name || user.name,
+                },
+            });
+        }
+
+        // Generate JWT token
         const token = jwt.sign(
             { id: user.id, email: user.email },
             process.env.JWT_SECRET!,
@@ -52,59 +80,19 @@ router.post("/register", async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
 
-        res.status(201).json({
-            success: true,
-            message: "User registered successfully",
-            user: { id: user.id, email: user.email, name: user.name },
-        });
-    } catch (error) {
-        console.error("Registration error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Registration failed",
-        });
-    }
-});
-
-// Login
-router.post("/login", async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) {
-            return res
-                .status(401)
-                .json({ success: false, message: "Invalid credentials" });
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res
-                .status(401)
-                .json({ success: false, message: "Invalid credentials" });
-        }
-
-        const token = jwt.sign(
-            { id: user.id, email: user.email },
-            process.env.JWT_SECRET!,
-            { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
-        );
-
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
-
         res.json({
             success: true,
             message: "Login successful",
-            user: { id: user.id, email: user.email, name: user.name },
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                picture: user.picture,
+            },
         });
     } catch (error) {
-        console.error("Login error:", error);
+        console.error("Google login error:", error);
         res.status(500).json({ success: false, message: "Login failed" });
     }
 });
@@ -120,7 +108,13 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: req.user!.id },
-            select: { id: true, email: true, name: true, createdAt: true },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                picture: true,
+                createdAt: true,
+            },
         });
         res.json({ success: true, user });
     } catch (error) {

@@ -1,0 +1,145 @@
+// ProfileStack Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - Core user authentication
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile Profile?
+
+  @@map("users")
+}
+
+// Profile model - Centralized profile storage
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Personal Information
+  firstName   String?
+  lastName    String?
+  email       String?
+  phone       String?
+  location    String?
+  bio         String?
+  profilePic  String?
+  linkedIn    String?
+  github      String?
+  portfolio   String?
+
+  // Relations
+  education   Education[]
+  experience  Experience[]
+  skills      Skill[]
+  projects    Project[]
+  certifications Certification[]
+
+  @@map("profiles")
+}
+
+// Education model
+model Education {
+  id          String   @id @default(uuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  institution String
+  degree      String
+  fieldOfStudy String?
+  startDate   DateTime?
+  endDate     DateTime?
+  grade       String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("education")
+}
+
+// Experience model
+model Experience {
+  id          String   @id @default(uuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  company     String
+  position    String
+  location    String?
+  startDate   DateTime?
+  endDate     DateTime?
+  current     Boolean  @default(false)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("experiences")
+}
+
+// Skills model
+model Skill {
+  id          String   @id @default(uuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name        String
+  level       SkillLevel @default(INTERMEDIATE)
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("skills")
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+// Projects model
+model Project {
+  id          String   @id @default(uuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  techStack   String[]
+  liveUrl     String?
+  repoUrl     String?
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("projects")
+}
+
+// Certifications model
+model Certification {
+  id             String   @id @default(uuid())
+  profileId      String
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name           String
+  issuingOrg     String
+  issueDate      DateTime?
+  expiryDate     DateTime?
+  credentialId   String?
+  credentialUrl  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("certifications")
+}

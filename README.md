@@ -2,11 +2,9 @@
 
 **One Profile, Everywhere** – AI-powered profile management platform that acts as a centralized storage for all your professional information.
 
-![ProfileStack Banner](https://via.placeholder.com/1200x400/6366f1/ffffff?text=ProfileStack)
-
 ## 🎯 Problem Statement
 
-Students and early professionals repeatedly enter the same personal, academic, and professional information across multiple platforms. This leads to:
+Students and early professionals repeatedly enter the same information across multiple platforms. This leads to:
 
 - Inconsistent information across platforms
 - Wasted time rewriting and reformatting profiles
@@ -19,37 +17,37 @@ ProfileStack allows users to **store once, modify intelligently, and use everywh
 
 - **Centralized Profile Storage**: Single source of truth for all your professional data
 - **AI-Driven Customization**: Adapt profiles for LinkedIn, GitHub, resumes, freelance platforms, and more
+- **Google Sign-In**: Seamless authentication with cloud sync
+- **Guest Mode**: Try without signing in – data stored locally
 - **One-Click Modification**: Change tone, format, and emphasis based on platform or role
-- **Consistent Data**: Keep information up-to-date across all platforms
 
 ## 🏗️ Tech Stack
 
-| Layer        | Technology                          |
-| ------------ | ----------------------------------- |
-| **Frontend** | Next.js 16, React 19, TailwindCSS 4 |
-| **Backend**  | Express.js, TypeScript              |
-| **Database** | PostgreSQL + Prisma ORM             |
-| **AI**       | Google Gemini API                   |
-| **DevOps**   | Docker, Docker Compose              |
+| Layer        | Technology                          | Deployment       |
+| ------------ | ----------------------------------- | ---------------- |
+| **Frontend** | Next.js 16, React 19, TailwindCSS 4 | Vercel           |
+| **Backend**  | Express.js, TypeScript              | Google Cloud     |
+| **Database** | PostgreSQL + Prisma ORM             | Google Cloud SQL |
+| **AI**       | Google Gemini API                   | -                |
+| **Auth**     | Google OAuth 2.0                    | -                |
 
 ## 📁 Project Structure
 
 ```
 ProfileStack/
-├── frontend/              # Next.js frontend application
+├── frontend/              # Next.js frontend (Vercel)
 │   ├── app/               # App router pages
-│   ├── public/            # Static assets
-│   └── package.json
-├── backend/               # Express.js API server
+│   │   ├── page.tsx       # Auth page
+│   │   └── dashboard/     # Protected dashboard pages
+│   ├── components/        # React components
+│   ├── lib/               # Store & API client
+│   └── types/             # TypeScript interfaces
+├── backend/               # Express.js API (Google Cloud)
 │   ├── src/
-│   │   ├── index.ts       # Entry point
+│   │   ├── routes/        # API routes
 │   │   ├── lib/           # Prisma & Gemini clients
-│   │   ├── middleware/    # Auth middleware
-│   │   └── routes/        # API routes
-│   ├── prisma/
-│   │   └── schema.prisma  # Database schema
-│   └── package.json
-├── docker-compose.yml     # Container orchestration
+│   │   └── middleware/    # Auth middleware
+│   └── prisma/            # Database schema
 └── README.md
 ```
 
@@ -58,69 +56,61 @@ ProfileStack/
 ### Prerequisites
 
 - Node.js 18+
-- Docker & Docker Compose
-- pnpm (recommended) or npm
-- Google Gemini API Key
+- PostgreSQL
+- Google OAuth Client ID
+- Gemini API Key
 
-### 1. Clone & Setup Environment
+### 1. Clone & Setup
 
 ```bash
-# Clone the repository
 git clone https://github.com/your-username/profilestack.git
 cd profilestack
-
-# Copy environment variables
-cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
 ```
 
-### 2. Development with Docker
+### 2. Backend Setup
 
 ```bash
-# Start all services (PostgreSQL, Backend, Frontend)
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-```
-
-### 3. Development without Docker
-
-```bash
-# Start PostgreSQL (requires local installation)
-# Or use: docker-compose up postgres -d
-
-# Backend
 cd backend
 npm install
 cp .env.example .env
+# Edit .env with your credentials
 npx prisma migrate dev
 npm run dev
+```
 
-# Frontend (new terminal)
+### 3. Frontend Setup
+
+```bash
 cd frontend
 pnpm install
+cp .env.example .env.local
+# Add NEXT_PUBLIC_GOOGLE_CLIENT_ID
 pnpm dev
 ```
 
-### Access the Application
+### Access
 
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:5000
-- **API Health Check**: http://localhost:5000/api/health
+
+## 🔐 Authentication
+
+| Mode               | Storage      | Sync            |
+| ------------------ | ------------ | --------------- |
+| **Google Sign-In** | PostgreSQL   | ✅ Cloud synced |
+| **Guest Mode**     | localStorage | ❌ Local only   |
 
 ## 📡 API Endpoints
 
-### Authentication
+### Auth
 
-| Method | Endpoint             | Description       |
-| ------ | -------------------- | ----------------- |
-| POST   | `/api/auth/register` | Register new user |
-| POST   | `/api/auth/login`    | User login        |
-| POST   | `/api/auth/logout`   | User logout       |
-| GET    | `/api/auth/me`       | Get current user  |
+| Method | Endpoint           | Description        |
+| ------ | ------------------ | ------------------ |
+| POST   | `/api/auth/google` | Google OAuth login |
+| POST   | `/api/auth/logout` | Logout             |
+| GET    | `/api/auth/me`     | Get current user   |
 
-### Profile Management
+### Profile
 
 | Method | Endpoint                  | Description          |
 | ------ | ------------------------- | -------------------- |
@@ -131,7 +121,7 @@ pnpm dev
 | POST   | `/api/profile/skills`     | Add skill            |
 | POST   | `/api/profile/projects`   | Add project          |
 
-### AI Features
+### AI
 
 | Method | Endpoint                     | Description                        |
 | ------ | ---------------------------- | ---------------------------------- |
@@ -141,21 +131,17 @@ pnpm dev
 
 ## 🔮 Roadmap
 
-- [ ] User authentication & authorization
-- [ ] Complete profile management
+- [x] Google OAuth authentication
+- [x] Guest mode with local storage
+- [ ] Complete profile management forms
 - [ ] AI-powered profile generation
 - [ ] Platform export (LinkedIn, GitHub, etc.)
 - [ ] Resume PDF generation
 - [ ] Chrome extension for auto-fill
-- [ ] Analytics dashboard
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+MIT License
 
 ---
 

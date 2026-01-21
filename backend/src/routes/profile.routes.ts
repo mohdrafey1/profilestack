@@ -291,4 +291,130 @@ router.delete(
     },
 );
 
+// === Sync local profile to cloud ===
+router.post("/sync", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+        const {
+            firstName,
+            lastName,
+            email,
+            phone,
+            location,
+            bio,
+            linkedIn,
+            github,
+            portfolio,
+            education,
+            experience,
+            skills,
+            projects,
+            certifications,
+        } = req.body;
+
+        const profile = await prisma.profile.findUnique({
+            where: { userId: req.user!.id },
+        });
+
+        if (!profile) {
+            return res
+                .status(404)
+                .json({ success: false, message: "Profile not found" });
+        }
+
+        // Delete existing data
+        await prisma.education.deleteMany({ where: { profileId: profile.id } });
+        await prisma.experience.deleteMany({
+            where: { profileId: profile.id },
+        });
+        await prisma.skill.deleteMany({ where: { profileId: profile.id } });
+        await prisma.project.deleteMany({ where: { profileId: profile.id } });
+        await prisma.certification.deleteMany({
+            where: { profileId: profile.id },
+        });
+
+        // Update basic info
+        await prisma.profile.update({
+            where: { id: profile.id },
+            data: {
+                firstName,
+                lastName,
+                email,
+                phone,
+                location,
+                bio,
+                linkedIn,
+                github,
+                portfolio,
+            },
+        });
+
+        // Create new entries
+        if (education?.length) {
+            await prisma.education.createMany({
+                data: education.map((e: any) => ({
+                    ...e,
+                    id: undefined,
+                    profileId: profile.id,
+                })),
+            });
+        }
+        if (experience?.length) {
+            await prisma.experience.createMany({
+                data: experience.map((e: any) => ({
+                    ...e,
+                    id: undefined,
+                    profileId: profile.id,
+                })),
+            });
+        }
+        if (skills?.length) {
+            await prisma.skill.createMany({
+                data: skills.map((s: any) => ({
+                    ...s,
+                    id: undefined,
+                    profileId: profile.id,
+                })),
+            });
+        }
+        if (projects?.length) {
+            await prisma.project.createMany({
+                data: projects.map((p: any) => ({
+                    ...p,
+                    id: undefined,
+                    profileId: profile.id,
+                })),
+            });
+        }
+        if (certifications?.length) {
+            await prisma.certification.createMany({
+                data: certifications.map((c: any) => ({
+                    ...c,
+                    id: undefined,
+                    profileId: profile.id,
+                })),
+            });
+        }
+
+        // Fetch updated profile
+        const updatedProfile = await prisma.profile.findUnique({
+            where: { id: profile.id },
+            include: {
+                education: true,
+                experience: true,
+                skills: true,
+                projects: true,
+                certifications: true,
+            },
+        });
+
+        res.json({ success: true, profile: updatedProfile });
+    } catch (error) {
+        console.error("Sync profile error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to sync profile",
+        });
+    }
+});
+
 export default router;

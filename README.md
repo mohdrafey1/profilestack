@@ -145,4 +145,4 @@ MIT License
 
 ---
 
-<p align="center">Made with ❤️ by ProfileStack Team</p>
+<p align="center">Made with ❤️ by Mohd Rafey</p>
